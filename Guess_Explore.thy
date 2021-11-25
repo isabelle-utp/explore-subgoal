@@ -130,14 +130,16 @@ fun gen_guess prep_var raw_vars int state =
       |> fst |> polymorphic ctxt;
 
     (* Show auto-completion suggestion for facts *)
-    fun print_facts st = let
-      val thms = Proof.the_facts st;
-      val ctxt = Proof.context_of st;
-      val enclosure = (Explorer.enclose ctxt (Proof.theory_of st))
-      val mapped = map (fn thm => Thm.pretty_thm ctxt thm |> Pretty.string_of |> enclosure) thms;
-      val mapped = map (fn line => "  " ^ line) mapped;
-      val text = cat_lines ("where" :: mapped);
-      val message = Active.sendback_markup_properties [] text
+    fun print_facts st =
+      let
+        val thms = Proof.the_facts st;
+        val ctxt = Proof.context_of st;
+        val enclosure = Explorer.enclose ctxt (Proof.theory_of st);
+        val displayed = map (enclosure o Pretty.string_of o Thm.pretty_thm ctxt) thms;
+        val indented = map (fn line => "    " ^ line) displayed;
+        val keyword = if null vars then "have" else "where";
+        val text = cat_lines (keyword :: indented);
+        val message = Active.sendback_markup_properties [] text;
       in Output.information ("Obtains pattern:\n" ^ message) end
 
     fun guess_context raw_rule state' =
