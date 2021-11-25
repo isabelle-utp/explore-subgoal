@@ -83,6 +83,7 @@ signature EXPLORER =
 sig
   datatype explore_kind = HAVE_IF | ASSUME_SHOW | ASSUMES_SHOWS | CONTEXT | SUBGOAL
   val explore: explore_kind -> Toplevel.state -> Proof.state
+  val enclose: Proof.context -> theory -> string -> string
 end
 
 structure Explorer: EXPLORER =
@@ -396,15 +397,21 @@ fun maybe_quote_with keywords quote y =
            Keyword.is_literal keywords s) ? quote
   end
 
+fun enclose ctxt thy =
+  let
+    val quote_type = Explorer_Lib.default_raw_params thy |> snd
+  in
+    (case quote_type of
+       Explorer_Lib.GUILLEMOTS => maybe_quote_with (Thy_Header.get_keywords' ctxt) cartouche
+     | Explorer_Lib.QUOTES => maybe_quote_with (Thy_Header.get_keywords' ctxt) quote)
+  end
+
 fun explore aim st =
   let
     val thy = Toplevel.theory_of st
     val quote_type = Explorer_Lib.default_raw_params thy |> snd
     val ctxt = Toplevel.presentation_context st
-    val enclosure =
-      (case quote_type of
-         Explorer_Lib.GUILLEMOTS => maybe_quote_with (Thy_Header.get_keywords' ctxt) cartouche
-       | Explorer_Lib.QUOTES => maybe_quote_with (Thy_Header.get_keywords' ctxt) quote)
+    val enclosure = enclose ctxt thy
     val st = Toplevel.proof_of st
     val { context, facts = _, goal } = Proof.goal st;
     val goal_props = Logic.strip_imp_prems (Thm.prop_of goal);
